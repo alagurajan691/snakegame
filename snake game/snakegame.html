@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: none; /* Prevents scrolling on touch devices */
+        }
+        canvas {
+            background-image: 
+                linear-gradient(to right, rgba(230, 230, 230, 0.5) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(230, 230, 230, 0.5) 1px, transparent 1px);
+        }
+        /* Style for the selected buttons */
+        .color-btn.selected, .animal-btn.selected {
+            outline: 3px solid white;
+            outline-offset: 2px;
+        }
+        .gemini-btn-shine {
+            animation: shine 2s infinite;
+        }
+        @keyframes shine {
+            0% { box-shadow: 0 0 5px #34d399, 0 0 10px #34d399; }
+            50% { box-shadow: 0 0 20px #34d399, 0 0 30px #34d399; }
+            100% { box-shadow: 0 0 5px #34d399, 0 0 10px #34d399; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-md md:max-w-lg lg:max-w-xl text-center">
+        <h1 class="text-4xl md:text-5xl font-bold mb-2 text-emerald-400">Snake</h1>
+        <div class="flex justify-between items-center mb-4 text-lg bg-gray-800 p-3 rounded-lg shadow-lg">
+            <p>Score: <span id="score" class="font-bold text-yellow-400">0</span></p>
+            <p>High Score: <span id="highScore" class="font-bold text-yellow-400">0</span></p>
+        </div>
+        <div id="game-message" class="text-lg text-gray-300 mb-4 h-8"></div>
+
+
+        <div class="relative bg-gray-800 rounded-lg shadow-2xl overflow-hidden border-4 border-gray-700">
+            <canvas id="gameCanvas" class="w-full h-auto aspect-square"></canvas>
+            <!-- Game Over / Start Screen Overlay -->
+            <div id="overlay" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center text-center p-4">
+                <h2 id="overlay-title" class="text-4xl font-bold mb-4 text-white">Snake</h2>
+                
+                <!-- Main Menu Options -->
+                <div id="main-menu">
+                    <!-- Animal Selector -->
+                    <div id="animal-selector" class="mb-6">
+                        <p class="text-lg text-gray-300 mb-3">Choose your animal:</p>
+                        <div class="flex justify-center gap-4">
+                            <button class="animal-btn text-3xl p-2 rounded-lg bg-gray-700" data-animal="snake">🐍</button>
+                            <button class="animal-btn text-3xl p-2 rounded-lg bg-gray-700" data-animal="caterpillar">🐛</button>
+                        </div>
+                    </div>
+
+                    <!-- Color Selector -->
+                    <div id="color-selector" class="mb-6">
+                        <p class="text-lg text-gray-300 mb-3">Choose your color:</p>
+                        <div class="flex justify-center gap-4">
+                            <button class="color-btn w-10 h-10 rounded-full bg-emerald-500" data-theme="green"></button>
+                            <button class="color-btn w-10 h-10 rounded-full bg-blue-500" data-theme="blue"></button>
+                            <button class="color-btn w-10 h-10 rounded-full bg-purple-500" data-theme="purple"></button>
+                            <button class="color-btn w-10 h-10 rounded-full bg-pink-500" data-theme="pink"></button>
+                        </div>
+                    </div>
+
+                    <p id="overlay-text" class="text-lg mb-6 text-gray-300">Select a difficulty to start.</p>
+                    <div id="difficulty-container" class="flex flex-col sm:flex-row gap-4">
+                        <button data-difficulty="easy" class="difficulty-btn bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg text-xl transition-transform transform hover:scale-105 shadow-lg">Easy</button>
+                        <button data-difficulty="medium" class="difficulty-btn bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-8 rounded-lg text-xl transition-transform transform hover:scale-105 shadow-lg">Medium</button>
+                        <button data-difficulty="hard" class="difficulty-btn bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-lg text-xl transition-transform transform hover:scale-105 shadow-lg">Hard</button>
+                    </div>
+                </div>
+
+                <!-- Game Over Options -->
+                <div id="game-over-menu" class="hidden">
+                     <p id="game-over-text" class="text-lg mb-6 text-gray-300"></p>
+                     <div id="gemini-container" class="flex flex-col items-center gap-4">
+                        <button id="animal-fact-btn" class="gemini-btn-shine bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-8 rounded-lg text-xl transition-transform transform hover:scale-105 shadow-lg">✨ Get an Animal Fact</button>
+                        <p id="animal-fact" class="text-lg text-gray-300 mt-2"></p>
+                    </div>
+                    <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                        <button id="restart-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg text-xl transition-transform transform hover:scale-105 shadow-lg">Restart</button>
+                        <button id="change-settings-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-lg text-xl transition-transform transform hover:scale-105 shadow-lg">Change Settings</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Controls Info -->
+        <div class="mt-4 text-gray-400 md:hidden">
+            <p>Swipe anywhere on the screen to control the snake.</p>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const highScoreEl = document.getElementById('highScore');
+        const overlay = document.getElementById('overlay');
+        const overlayTitle = document.getElementById('overlay-title');
+        const overlayText = document.getElementById('overlay-text');
+        const difficultyButtons = document.querySelectorAll('.difficulty-btn');
+        const colorButtons = document.querySelectorAll('.color-btn');
+        const animalButtons = document.querySelectorAll('.animal-btn');
+        const geminiContainer = document.getElementById('gemini-container');
+        const animalFactBtn = document.getElementById('animal-fact-btn');
+        const animalFactEl = document.getElementById('animal-fact');
+        const gameMessageEl = document.getElementById('game-message');
+        const mainMenu = document.getElementById('main-menu');
+        const gameOverMenu = document.getElementById('game-over-menu');
+        const gameOverText = document.getElementById('game-over-text');
+        const restartBtn = document.getElementById('restart-btn');
+        const changeSettingsBtn = document.getElementById('change-settings-btn');
+
+
+        // --- Game Configuration ---
+        const gridSize = 20;
+        let canvasSize;
+        let tileCount;
+        const colorThemes = {
+            green: { head: '#10b981', body: '#34d399' },
+            blue: { head: '#3b82f6', body: '#60a5fa' },
+            purple: { head: '#8b5cf6', body: '#a78bfa' },
+            pink: { head: '#ec4899', body: '#f472b6' }
+        };
+
+        // --- Game State ---
+        let player = [];
+        let food = {};
+        let direction;
+        let score = 0;
+        let highScore = 0;
+        let isGameOver = false;
+        let gameLoop;
+        let gameSpeed;
+        let currentTheme = 'green';
+        let currentAnimal = 'snake';
+
+        // --- Touch Controls State ---
+        let touchStartX = 0, touchStartY = 0, touchEndX = 0, touchEndY = 0;
+        
+        // --- Gemini API ---
+        const apiKey = ""; // Leave empty
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+        async function getGeminiResponse(prompt) {
+            try {
+                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0) {
+                    return result.candidates[0].content.parts[0].text;
+                }
+                return "Sorry, I couldn't think of anything right now.";
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                return "There was an error with the AI response.";
+            }
+        }
+
+        async function getAnimalFact() {
+            animalFactEl.textContent = 'Thinking of a cool fact...';
+            const fact = await getGeminiResponse(`Tell me a surprising and little-known fact about ${currentAnimal}s in one sentence.`);
+            animalFactEl.textContent = fact;
+        }
+        
+        async function getGameMessage() {
+            if (score === 0 || score % 5 !== 0) return;
+            let prompt = "";
+            if (score > 0 && score <= 5) {
+                prompt = `Write a short, encouraging message for a player of a game like snake who just started and has a low score. The player is a ${currentAnimal}.`;
+            } else if (score > 5 && score <= 15) {
+                prompt = `Write a short, slightly taunting message for a player of a game like snake who is doing okay. The player is a ${currentAnimal}.`;
+            } else {
+                prompt = `Write a short, impressed message for a player of a game like snake who has a high score. The player is a ${currentAnimal}.`;
+            }
+            const message = await getGeminiResponse(prompt);
+            gameMessageEl.textContent = message;
+        }
+
+
+        // --- Initialization ---
+        function setupCanvas() {
+            const containerWidth = canvas.parentElement.clientWidth;
+            canvas.width = containerWidth;
+            canvas.height = containerWidth;
+            canvasSize = canvas.width;
+            tileCount = canvasSize / gridSize;
+            canvas.style.backgroundSize = `${tileCount}px ${tileCount}px`;
+        }
+
+        function init() {
+            highScore = localStorage.getItem('snakeHighScore') || 0;
+            highScoreEl.textContent = highScore;
+            currentTheme = localStorage.getItem('snakeColorTheme') || 'green';
+            currentAnimal = localStorage.getItem('snakeAnimal') || 'snake';
+            updateColorSelectionUI();
+            updateAnimalSelectionUI();
+            
+            setupCanvas();
+            window.addEventListener('resize', setupCanvas);
+            
+            difficultyButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const difficulty = button.dataset.difficulty;
+                    switch(difficulty) {
+                        case 'easy': gameSpeed = 200; break;
+                        case 'medium': gameSpeed = 100; break;
+                        case 'hard': gameSpeed = 60; break;
+                    }
+                    startGame();
+                });
+            });
+
+            colorButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    currentTheme = button.dataset.theme;
+                    localStorage.setItem('snakeColorTheme', currentTheme);
+                    updateColorSelectionUI();
+                });
+            });
+
+            animalButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    currentAnimal = button.dataset.animal;
+                    localStorage.setItem('snakeAnimal', currentAnimal);
+                    updateAnimalSelectionUI();
+                });
+            });
+            
+            animalFactBtn.addEventListener('click', getAnimalFact);
+            restartBtn.addEventListener('click', startGame);
+            changeSettingsBtn.addEventListener('click', showMainMenu);
+
+            document.addEventListener('keydown', changeDirection);
+            canvas.addEventListener('touchstart', handleTouchStart, false);
+            canvas.addEventListener('touchmove', handleTouchMove, false);
+            canvas.addEventListener('touchend', handleTouchEnd, false);
+            
+            showMainMenu();
+        }
+
+        function updateColorSelectionUI() {
+            colorButtons.forEach(btn => btn.classList.toggle('selected', btn.dataset.theme === currentTheme));
+        }
+        
+        function updateAnimalSelectionUI() {
+            animalButtons.forEach(btn => btn.classList.toggle('selected', btn.dataset.animal === currentAnimal));
+        }
+
+        function showMainMenu() {
+            overlayTitle.textContent = 'Snake';
+            mainMenu.style.display = 'block';
+            gameOverMenu.style.display = 'none';
+            overlay.style.display = 'flex';
+        }
+
+        // --- Game Core Functions ---
+        function startGame() {
+            player = [{ x: 10, y: 10 }];
+            direction = 'right';
+            score = 0;
+            scoreEl.textContent = score;
+            isGameOver = false;
+            gameMessageEl.textContent = '';
+            animalFactEl.textContent = '';
+            
+            generateFood();
+            
+            overlay.style.display = 'none';
+
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(update, gameSpeed);
+        }
+
+        function update() {
+            if (isGameOver) return;
+            clearCanvas();
+            movePlayer();
+            checkCollision();
+            if (isGameOver) {
+                gameOver();
+                return;
+            }
+            drawFood();
+            drawPlayer();
+        }
+        
+        function gameOver() {
+            clearInterval(gameLoop);
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('snakeHighScore', highScore);
+                highScoreEl.textContent = highScore;
+            }
+            
+            overlayTitle.textContent = 'Game Over!';
+            gameOverText.innerHTML = `Your final score is <strong class="text-yellow-400">${score}</strong>.`;
+            mainMenu.style.display = 'none';
+            gameOverMenu.style.display = 'block';
+            overlay.style.display = 'flex';
+        }
+
+        // --- Drawing Functions ---
+        function clearCanvas() {
+            ctx.fillStyle = '#1f2937';
+            ctx.fillRect(0, 0, canvasSize, canvasSize);
+        }
+
+        function drawPlayer() {
+            const theme = colorThemes[currentTheme];
+            if (currentAnimal === 'snake') {
+                player.forEach((segment, index) => {
+                    ctx.fillStyle = index === 0 ? theme.head : theme.body;
+                    ctx.fillRect(segment.x * tileCount, segment.y * tileCount, tileCount - 2, tileCount - 2);
+                });
+            } else if (currentAnimal === 'caterpillar') {
+                player.forEach((segment, index) => {
+                    const centerX = segment.x * tileCount + tileCount / 2;
+                    const centerY = segment.y * tileCount + tileCount / 2;
+                    const radius = tileCount / 2 - 1;
+
+                    ctx.fillStyle = index === 0 ? theme.head : theme.body;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    if (index === 0) {
+                        ctx.fillStyle = 'white';
+                        ctx.beginPath();
+                        ctx.arc(centerX - tileCount * 0.2, centerY - tileCount * 0.2, 2, 0, 2 * Math.PI);
+                        ctx.arc(centerX + tileCount * 0.2, centerY - tileCount * 0.2, 2, 0, 2 * Math.PI);
+                        ctx.fill();
+                        
+                        ctx.fillStyle = 'black';
+                        ctx.beginPath();
+                        ctx.arc(centerX - tileCount * 0.2, centerY - tileCount * 0.2, 1, 0, 2 * Math.PI);
+                        ctx.arc(centerX + tileCount * 0.2, centerY - tileCount * 0.2, 1, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
+                });
+            }
+        }
+
+        function drawFood() {
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.arc(food.x * tileCount + tileCount / 2, food.y * tileCount + tileCount / 2, tileCount / 2 - 2, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+
+        // --- Game Logic ---
+        function movePlayer() {
+            const head = { ...player[0] };
+            switch (direction) {
+                case 'up': head.y--; break;
+                case 'down': head.y++; break;
+                case 'left': head.x--; break;
+                case 'right': head.x++; break;
+            }
+            player.unshift(head);
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                scoreEl.textContent = score;
+                generateFood();
+                getGameMessage();
+            } else {
+                player.pop();
+            }
+        }
+
+        function generateFood() {
+            let foodPosition;
+            do {
+                foodPosition = {
+                    x: Math.floor(Math.random() * gridSize),
+                    y: Math.floor(Math.random() * gridSize)
+                };
+            } while (isFoodOnPlayer(foodPosition));
+            food = foodPosition;
+        }
+
+
+
+        function isFoodOnPlayer(position) {
+            return player.some(segment => segment.x === position.x && segment.y === position.y);
+        }
+
+        function checkCollision() {
+            const head = player[0];
+            if (head.x < 0 || head.x >= gridSize || head.y < 0 || head.y >= gridSize) {
+                isGameOver = true;
+                return;
+            }
+            for (let i = 1; i < player.length; i++) {
+                if (head.x === player[i].x && head.y === player[i].y) {
+                    isGameOver = true;
+                    return;
+                }
+            }
+        }
+
+        // --- Input Handling ---
+        function changeDirection(e) {
+            // Prevent the browser's default scrolling behavior for arrow keys
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+            }
+
+            const key = e.key;
+            const goingUp = direction === 'up';
+            const goingDown = direction === 'down';
+            const goingLeft = direction === 'left';
+            const goingRight = direction === 'right';
+
+            if ((key === 'ArrowUp' || key === 'w') && !goingDown) direction = 'up';
+            if ((key === 'ArrowDown' || key === 's') && !goingUp) direction = 'down';
+            if ((key === 'ArrowLeft' || key === 'a') && !goingRight) direction = 'left';
+            if ((key === 'ArrowRight' || key === 'd') && !goingLeft) direction = 'right';
+        }
+
+        // --- Touch Controls ---
+        function handleTouchStart(e) {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }
+        function handleTouchMove(e) { e.preventDefault(); }
+        function handleTouchEnd(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipe();
+        }
+        function handleSwipe() {
+            const dx = touchEndX - touchStartX;
+            const dy = touchEndY - touchStartY;
+            const absDx = Math.abs(dx);
+            const absDy = Math.abs(dy);
+            const goingUp = direction === 'up', goingDown = direction === 'down', goingLeft = direction === 'left', goingRight = direction === 'right';
+
+            if (absDx > absDy) {
+                if (dx > 0 && !goingLeft) direction = 'right';
+                else if (dx < 0 && !goingRight) direction = 'left';
+            } else {
+                if (dy > 0 && !goingUp) direction = 'down';
+                else if (dy < 0 && !goingDown) direction = 'up';
+            }
+        }
+
+        // --- Run the game ---
+        init();
+    </script>
+</body>
+</html>
